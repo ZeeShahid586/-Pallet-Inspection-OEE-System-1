@@ -2,443 +2,633 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Industrial Pallet OEE Inspector</title>
-    <!-- Tailwind CSS for Styling -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Chart.js for Data Visualization -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Industrial Pallet Inspection & OEE System | Conveyor Belt Simulator</title>
     <style>
-        body { background-color: #0f172a; color: #e2e8f0; font-family: 'Segoe UI', system-ui, sans-serif; }
-        .glass-card { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.1); }
-        #logContainer::-webkit-scrollbar { width: 6px; }
-        #logContainer::-webkit-scrollbar-track { background: #1e293b; }
-        #logContainer::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
-        .status-up { color: #4ade80; }
-        .status-down { color: #f87171; }
-        .status-gap { color: #facc15; }
+        * {
+            box-sizing: border-box;
+            user-select: none; /* better UI for kiosk style */
+        }
+        body {
+            background: linear-gradient(145deg, #1a2a3a 0%, #0f1a24 100%);
+            font-family: 'Segoe UI', 'Roboto', 'Courier New', monospace;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+        .dashboard {
+            max-width: 1400px;
+            width: 100%;
+            background: rgba(30, 40, 50, 0.85);
+            backdrop-filter: blur(2px);
+            border-radius: 2rem;
+            box-shadow: 0 25px 45px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1);
+            padding: 1.5rem;
+            transition: all 0.2s;
+        }
+        h1 {
+            margin: 0 0 0.25rem 0;
+            font-size: 1.9rem;
+            font-weight: 600;
+            background: linear-gradient(135deg, #FFD966, #FFB347);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            letter-spacing: -0.5px;
+        }
+        .sub {
+            color: #9bb7d0;
+            margin-bottom: 1.5rem;
+            border-left: 3px solid #f39c12;
+            padding-left: 12px;
+            font-size: 0.85rem;
+        }
+        .grid-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+        }
+        .card {
+            background: #1e2b32c9;
+            backdrop-filter: blur(8px);
+            border-radius: 1.5rem;
+            padding: 1rem 1.2rem;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,215,120,0.2);
+        }
+        .full-width {
+            grid-column: span 2;
+        }
+        .video-container {
+            background: #000000aa;
+            border-radius: 1.2rem;
+            text-align: center;
+            padding: 10px;
+        }
+        canvas {
+            background: #2c3e2f;
+            border-radius: 1rem;
+            width: 100%;
+            height: auto;
+            box-shadow: 0 5px 15px black;
+            border: 2px solid #ffb34755;
+        }
+        .stats-panel {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-top: 8px;
+        }
+        .stat {
+            background: #07141e;
+            border-radius: 1.2rem;
+            padding: 0.7rem 1.2rem;
+            flex: 1;
+            text-align: center;
+            border-left: 4px solid #ffb347;
+        }
+        .stat-label {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            color: #bbd4f0;
+            letter-spacing: 1px;
+        }
+        .stat-value {
+            font-size: 1.7rem;
+            font-weight: bold;
+            color: #f7d44a;
+            line-height: 1.2;
+        }
+        .log-area {
+            background: #0a1219;
+            border-radius: 1rem;
+            height: 180px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.75rem;
+            padding: 8px 12px;
+            color: #b3e4c5;
+        }
+        .log-entry {
+            border-bottom: 1px solid #2a3a44;
+            padding: 4px 0;
+            font-family: monospace;
+        }
+        button {
+            background: #2c5a6e;
+            border: none;
+            color: white;
+            font-weight: bold;
+            padding: 8px 18px;
+            border-radius: 2rem;
+            cursor: pointer;
+            transition: 0.2s;
+            margin-top: 10px;
+            font-size: 0.8rem;
+        }
+        button:hover {
+            background: #e67e22;
+            transform: scale(1.02);
+        }
+        .badge {
+            display: inline-block;
+            background: #f39c12;
+            color: #1e2a32;
+            border-radius: 40px;
+            padding: 2px 12px;
+            font-weight: bold;
+            font-size: 0.7rem;
+        }
+        hr {
+            border-color: #ffb34730;
+        }
+        .flex-btw {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+        }
+        ::-webkit-scrollbar {
+            width: 5px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #111;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #f39c12;
+            border-radius: 10px;
+        }
+        @media (max-width: 860px) {
+            .grid-container { grid-template-columns: 1fr; }
+            .full-width { grid-column: span 1; }
+        }
     </style>
 </head>
-<body class="p-4 md:p-8 flex flex-col h-screen overflow-hidden">
-
-    <!-- Header -->
-    <header class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+<body>
+<div class="dashboard">
+    <div class="flex-btw">
         <div>
-            <h1 class="text-3xl font-bold text-white tracking-tight">Pallet Inspection & OEE System</h1>
-            <p class="text-slate-400 text-sm mt-1">Real-time production tracking • Computer Vision Simulation</p>
+            <h1>🏭 PALLET INSPECTOR PRO • OEE ANALYTICS</h1>
+            <div class="sub">🔧 Real-time conveyor simulation | Mock CV detection | Uptime/Downtime Tracking | OEE</div>
         </div>
-        <div class="flex gap-3">
-            <button id="btnStart" onclick="startSimulation()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg transition-all shadow-lg shadow-blue-500/20">
-                Start Inspection
-            </button>
-            <button id="btnStop" onclick="stopSimulation()" disabled class="bg-slate-700 hover:bg-slate-600 text-slate-300 font-bold py-2 px-6 rounded-lg transition-all cursor-not-allowed">
-                Stop
-            </button>
-        </div>
-    </header>
-
-    <!-- Main Grid Layout -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1 min-h-0">
-        
-        <!-- Left Column: Camera Feed & Logs -->
-        <div class="lg:col-span-2 flex flex-col gap-6 min-h-0">
-            <!-- Camera Feed Simulation -->
-            <div class="glass-card rounded-xl p-4 flex-shrink-0">
-                <div class="flex justify-between items-center mb-2">
-                    <h2 class="font-semibold text-slate-300 flex items-center gap-2">
-                        <span class="w-2 h-2 bg-slate-500 rounded-full inline-block" id="liveIndicator"></span>
-                        CAMERA FEED
-                    </h2>
-                    <span class="text-xs font-mono text-slate-500" id="timestampDisplay">00:00:00</span>
-                </div>
-                <canvas id="cameraCanvas" width="800" height="350" class="w-full bg-black rounded-lg border border-slate-700"></canvas>
-            </div>
-
-            <!-- Console Log -->
-            <div class="glass-card rounded-xl p-4 flex-1 min-h-0 flex flex-col">
-                <h2 class="font-semibold text-slate-300 mb-2 flex-shrink-0">EVENT LOG</h2>
-                <div id="logContainer" class="bg-slate-950 rounded-lg p-3 font-mono text-xs overflow-y-auto flex-1 min-h-0 leading-relaxed">
-                    <div class="text-slate-600">[SYSTEM] Waiting to start inspection...</div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Right Column: Metrics & Charts -->
-        <div class="flex flex-col gap-6 min-h-0 overflow-y-auto">
-            <!-- OEE Big Display -->
-            <div class="glass-card rounded-xl p-6 text-center flex-shrink-0">
-                <h2 class="text-sm font-semibold text-slate-400 mb-2 tracking-widest">OVERALL OEE</h2>
-                <div id="oeeValue" class="text-6xl font-extrabold text-blue-400">0.0<span class="text-3xl">%</span></div>
-            </div>
-
-            <!-- KPI Grid -->
-            <div class="grid grid-cols-2 gap-4 flex-shrink-0">
-                <div class="bg-slate-800/50 rounded-lg p-4 border border-slate-700/50">
-                    <div class="text-xs text-slate-400 mb-1">AVAILABILITY</div>
-                    <div id="valAvailability" class="text-xl font-bold text-green-400">0.0%</div>
-                </div>
-                <div class="bg-slate-800/50 rounded-lg p-4 border border-slate-700/50">
-                    <div class="text-xs text-slate-400 mb-1">PERFORMANCE</div>
-                    <div id="valPerformance" class="text-xl font-bold text-yellow-400">0.0%</div>
-                </div>
-                <div class="bg-slate-800/50 rounded-lg p-4 border border-slate-700/50">
-                    <div class="text-xs text-slate-400 mb-1">QUALITY</div>
-                    <div id="valQuality" class="text-xl font-bold text-purple-400">98.0%</div>
-                </div>
-                <div class="bg-slate-800/50 rounded-lg p-4 border border-slate-700/50">
-                    <div class="text-xs text-slate-400 mb-1">TOTAL PALLETS</div>
-                    <div id="valPallets" class="text-xl font-bold text-white">0</div>
-                </div>
-            </div>
-
-            <!-- Time Stats -->
-            <div class="glass-card rounded-xl p-4 flex-shrink-0 space-y-2 text-sm">
-                <div class="flex justify-between"><span class="text-slate-400">Shift Time:</span><span id="valTimeTotal" class="text-white font-mono">00:00</span></div>
-                <div class="flex justify-between"><span class="text-slate-400">Uptime:</span><span id="valTimeUp" class="text-green-400 font-mono">00:00</span></div>
-                <div class="flex justify-between"><span class="text-slate-400">Downtime:</span><span id="valTimeDown" class="text-red-400 font-mono">00:00</span></div>
-                <div class="flex justify-between border-t border-slate-700 pt-2 mt-2"><span class="text-slate-400">Pallets/Min (Active):</span><span id="valPPM" class="text-white font-mono">0.0</span></div>
-            </div>
-
-            <!-- Chart -->
-            <div class="glass-card rounded-xl p-4 flex-1 min-h-[200px] flex flex-col">
-                <h2 class="text-sm font-semibold text-slate-300 mb-2">PRODUCTION CHART</h2>
-                <div class="relative flex-1 min-h-0">
-                    <canvas id="productionChart"></canvas>
-                </div>
-            </div>
+        <div style="text-align: right;">
+            <span class="badge" id="liveStatusBadge">🔴 INIT</span>
         </div>
     </div>
 
-    <script>
-        // --- CONFIGURATION ---
-        const CONFIG = {
-            simulationDurationMs: 180000, // 3 Minutes
-            frameRateMs: 33,              // ~30 FPS
-            downtimeThresholdSecs: 4,     // No pallet for 4s = Downtime
-            idealPalletsPerHour: 30,      // Theoretical max capacity
-            qualityRate: 0.98,            // Fixed quality percentage
-            detectionZoneX: 400           // X coordinate where pallet is "counted"
-        };
+    <div class="grid-container">
+        <!-- LEFT : Camera simulation + CV detection overlay -->
+        <div class="card">
+            <div style="font-weight:600; margin-bottom:8px;">📸 Conveyor Belt Feed (simulated)</div>
+            <div class="video-container">
+                <canvas id="conveyorCanvas" width="640" height="480" style="width:100%; height:auto; background:#2d3e2b;"></canvas>
+            </div>
+            <div class="flex-btw" style="margin-top: 12px;">
+                <div><span id="detectionHint">🔍 Detector: Mock Contour (Wood Color)</span></div>
+                <button id="resetBtn">🔄 Reset Simulation & Stats</button>
+            </div>
+        </div>
 
-        // --- STATE VARIABLES ---
-        let isRunning = false;
-        let animationId = null;
-        let startTime = 0;
-        
-        // Pallet state
-        let pallets = [];
-        let totalPalletsCounted = 0;
-        
-        // Time tracking
-        let uptimeSecs = 0;
-        let currentDowntimeSecs = 0;
-        let totalDowntimeSecs = 0;
-        
-        // Spawn control
-        let nextSpawnTimeMs = 0;
-        let forceDowntimeUntilMs = 0;
+        <!-- RIGHT : KPIs & OEE -->
+        <div class="card">
+            <div style="font-weight:600;">📊 PRODUCTION & OEE DASHBOARD</div>
+            <div class="stats-panel">
+                <div class="stat"><div class="stat-label">📦 TOTAL PALLETS</div><div class="stat-value" id="totalPallets">0</div></div>
+                <div class="stat"><div class="stat-label">⏱️ UPTIME (min)</div><div class="stat-value" id="uptimeMin">0.00</div></div>
+                <div class="stat"><div class="stat-label">⚠️ DOWNTIME (min)</div><div class="stat-value" id="downtimeMin">0.00</div></div>
+                <div class="stat"><div class="stat-label">📈 PALLETS / MIN</div><div class="stat-value" id="ppm">0.00</div></div>
+            </div>
+            <div class="stats-panel">
+                <div class="stat"><div class="stat-label">⚙️ Availability</div><div class="stat-value" id="availabilityVal">0%</div></div>
+                <div class="stat"><div class="stat-label">🏎️ Performance</div><div class="stat-value" id="performanceVal">0%</div></div>
+                <div class="stat"><div class="stat-label">✨ Quality (fixed 98%)</div><div class="stat-value" id="qualityVal">98%</div></div>
+                <div class="stat"><div class="stat-label">🏆 OEE SCORE</div><div class="stat-value" id="oeeVal">0%</div></div>
+            </div>
+            <hr>
+            <div><span style="font-weight:500;">📋 Real-time console log (timestamp | status | pallet)</span></div>
+            <div class="log-area" id="logPanel">
+                <div class="log-entry">✅ System ready. Generating pallet stream...</div>
+                <div class="log-entry">⏳ Downtime threshold: 3 sec no pallet → downtime</div>
+            </div>
+            <button id="exportReportBtn" style="background:#3a6b47;">📄 Generate Final Report + Chart</button>
+        </div>
 
-        // Chart data arrays
-        let chartLabels = [];
-        let chartPalletData = [];
-        let chartStatusData = [];
-        let lastChartUpdateSec = 0;
+        <!-- CHART SECTION (full width) -->
+        <div class="card full-width" id="chartCard" style="display: block;">
+            <div class="flex-btw"><span>📈 Pallet Events & Uptime/Downtime Timeline</span><span style="font-size:12px;">⬇️ interactive chart (matplotlib style replacement)</span></div>
+            <canvas id="timelineCanvas" width="800" height="280" style="width:100%; background:#031016; border-radius: 16px; margin-top: 8px;"></canvas>
+            <div style="font-size:11px; text-align:center; margin-top: 8px;">▲ Pallet detection spikes | Blue area = Uptime | Red = Downtime</div>
+        </div>
+    </div>
+</div>
 
-        // --- DOM ELEMENTS ---
-        const canvas = document.getElementById('cameraCanvas');
-        const ctx = canvas.getContext('2d');
-        const logContainer = document.getElementById('logContainer');
-        const liveIndicator = document.getElementById('liveIndicator');
-
-        // --- CHART SETUP ---
-        const prodChart = new Chart(document.getElementById('productionChart'), {
-            type: 'line',
-            data: {
-                labels: chartLabels,
-                datasets: [
-                    {
-                        label: 'Cumulative Pallets',
-                        data: chartPalletData,
-                        borderColor: '#3b82f6',
-                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                        fill: true,
-                        tension: 0.3,
-                        yAxisID: 'y'
-                    },
-                    {
-                        label: 'Status (1=Up, 0=Down)',
-                        data: chartStatusData,
-                        borderColor: '#4ade80',
-                        backgroundColor: '#4ade80',
-                        stepped: true,
-                        pointRadius: 0,
-                        yAxisID: 'y1'
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                interaction: { mode: 'index', intersect: false },
-                scales: {
-                    x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8', maxTicksLimit: 10 } },
-                    y: { position: 'left', grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#3b82f6' }, title: { display: true, text: 'Pallets', color: '#3b82f6' } },
-                    y1: { position: 'right', min: -0.1, max: 1.1, grid: { drawOnChartArea: false }, ticks: { color: '#4ade80', stepSize: 1, callback: value => value === 1 ? 'UP' : 'DOWN' } }
-                }
+<script>
+    // ======================== INDUSTRIAL PALLET INSPECTION & OEE ENGINE (FULL SIMULATION) =================
+    // Config
+    const FPS = 12;                 // simulation frames per second
+    const DOWNTIME_THRESHOLD_MS = 3000;   // 3 seconds without pallet → downtime
+    const IDEAL_PALLETS_PER_HOUR = 30;
+    const QUALITY_FACTOR = 0.98;
+    
+    // DOM elements
+    const canvas = document.getElementById('conveyorCanvas');
+    const ctx = canvas.getContext('2d');
+    const timelineCanvas = document.getElementById('timelineCanvas');
+    const timelineCtx = timelineCanvas.getContext('2d');
+    
+    // simulation state
+    let animationId = null;
+    let simulationActive = true;
+    let frameCount = 0;
+    let startTime = performance.now();   // absolute start (ms)
+    let lastFrameTimestamp = 0;
+    
+    // Pallet tracking & stats
+    let totalPalletsDetected = 0;
+    let palletEventsTimestamps = [];       // store timestamps (ms relative)
+    let statusLog = [];                    // { timeMs, status, palletPresent }
+    let currentStatus = "downtime";        // 'uptime' or 'downtime'
+    let lastPalletTimeMs = 0;              // last time a pallet was detected (absolute ms)
+    let uptimeMs = 0;
+    let downtimeMs = 0;
+    let lastStatusSwitchTimeMs = 0;
+    let rollingCountLastMinute = 0;
+    let lastMinuteRollingMark = 0;
+    let productionRatesPerMinute = [];     // store for final
+    
+    // dummy pallet simulation (random intervals, sliding movement)
+    let nextPalletFrameCounter = 0;
+    let palletVisibleCounter = 0;
+    let currentPalletX = 100;
+    let currentPalletWidth = 110;
+    let palletAnimProgress = 0;
+    let simulatedPalletPresent = false;
+    let debugLogEnabled = true;
+    
+    // Helper: relative time in seconds from start
+    function getElapsedSeconds() {
+        return (performance.now() - startTime) / 1000;
+    }
+    
+    // Convert absolute ms to relative seconds (for logs)
+    function getRelativeSec(absoluteMs) {
+        return ((absoluteMs - startTime) / 1000).toFixed(1);
+    }
+    
+    // Update uptime/downtime based on pallet detection (real detection from CV)
+    function updateStatusBasedOnDetection(isPalletDetected, nowMs) {
+        const elapsedSinceLastStatus = nowMs - lastStatusSwitchTimeMs;
+        // before updating, if status changed we add to uptime/downtime
+        if (isPalletDetected) {
+            lastPalletTimeMs = nowMs;
+            if (currentStatus === "downtime") {
+                // downtime ends
+                downtimeMs += elapsedSinceLastStatus;
+                currentStatus = "uptime";
+                lastStatusSwitchTimeMs = nowMs;
+                addLogEntry(`🟢 UPTIME started | pallet detected after downtime`, "uptime");
             }
-        });
-
-        // --- CORE FUNCTIONS ---
-        
-        function startSimulation() {
-            if(isRunning) return;
-            isRunning = true;
-            document.getElementById('btnStart').disabled = true;
-            document.getElementById('btnStop').disabled = false;
-            document.getElementById('btnStop').classList.remove('cursor-not-allowed');
-            liveIndicator.classList.remove('bg-slate-500');
-            liveIndicator.classList.add('bg-red-500', 'animate-pulse');
-            
-            startTime = Date.now();
-            nextSpawnTimeMs = 1000; // First pallet quickly
-            forceDowntimeUntilMs = 0;
-            
-            log("SYSTEM", "Inspection started. Shift duration: 3 mins.", "text-blue-400");
-            updateLoop();
+        } else {
+            // no pallet currently detected
+            const timeSinceLastPallet = nowMs - lastPalletTimeMs;
+            if (timeSinceLastPallet > DOWNTIME_THRESHOLD_MS && currentStatus === "uptime") {
+                // transition to downtime
+                uptimeMs += elapsedSinceLastStatus;
+                currentStatus = "downtime";
+                lastStatusSwitchTimeMs = nowMs;
+                addLogEntry(`🔴 DOWNTIME started | no pallet for ${(DOWNTIME_THRESHOLD_MS/1000)} sec`, "downtime");
+            }
         }
-
-        function stopSimulation() {
-            isRunning = false;
-            cancelAnimationFrame(animationId);
-            finalizeReport();
+        // store status log for charting (every ~0.5 sec but we store per frame? reduced freq: every ~10 frames)
+        if (frameCount % 8 === 0) {
+            statusLog.push({ timeMs: nowMs, status: currentStatus, palletPresent: isPalletDetected });
+            if (statusLog.length > 400) statusLog.shift();
         }
-
-        function updateLoop() {
-            if (!isRunning) return;
-            
-            const now = Date.now();
-            const elapsedMs = now - startTime;
-            const elapsedSec = elapsedMs / 1000;
-
-            // Auto-stop condition
-            if (elapsedMs >= CONFIG.simulationDurationMs) {
-                stopSimulation();
-                return;
+    }
+    
+    // --- Mock CV detection (wood color + contour simulation on canvas pixels)
+    // Since we control simulation, we inject ground truth from our generator, but to mimic real CV,
+    // we actually analyze the current canvas imageData (pixel-based detection) -> realistic dummy detector.
+    // This makes it feel like a real vision model!
+    function mockVisionDetectPalletFromCanvas() {
+        // get image data from canvas region (central band where pallet appears)
+        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = imgData.data;
+        let woodPixelCount = 0;
+        let totalROIPixels = 0;
+        // define region of interest: mostly center third (where pallet slides)
+        const roixStart = 50, roixEnd = canvas.width - 50;
+        const roiyStart = canvas.height * 0.3, roiyEnd = canvas.height * 0.7;
+        for (let y = roiyStart; y < roiyEnd; y++) {
+            for (let x = roixStart; x < roixEnd; x++) {
+                const idx = (y * canvas.width + x) * 4;
+                const r = data[idx], g = data[idx+1], b = data[idx+2];
+                // wooden color filter: brown/orange range
+                if (r > 70 && r < 200 && g > 40 && g < 150 && b < 120 && (r - g) > 15 && (r - b) > 30) {
+                    woodPixelCount++;
+                }
+                totalROIPixels++;
             }
-
-            // 1. Spawn Logic
-            if (now >= nextSpawnTimeMs && now >= forceDowntimeUntilMs) {
-                spawnPallet(now);
-                // Randomize next spawn (2s to 6s normally)
-                let nextDelay = 2000 + Math.random() * 4000; 
-                nextSpawnTimeMs = now + nextDelay;
-
-                // Randomly force a downtime period (10% chance every spawn)
-                if(Math.random() < 0.1) {
-                    forceDowntimeUntilMs = now + 10000 + Math.random() * 15000; // Force 10-25s gap
-                    log("SYSTEM", "Scheduled maintenance/delay gap.", "text-yellow-400");
-                }
-            }
-
-            // 2. Update Pallets & Detect
-            let palletDetectedThisFrame = false;
-            pallets = pallets.filter(p => {
-                p.x += p.speed;
-                
-                // Count logic (crosses the detection zone line)
-                if (!p.counted && p.x > CONFIG.detectionZoneX) {
-                    p.counted = true;
-                    totalPalletsCounted++;
-                    log("CV DETECT", `Pallet #${totalPalletsCounted} passed checkpoint.`, "text-green-400");
-                }
-
-                // Bounding box collision with camera view
-                if (p.x < canvas.width + 150) {
-                    palletDetectedThisFrame = true;
-                    return true; // Keep in array
-                }
-                return false; // Remove if off screen
-            });
-
-            // 3. Time Tracking
-            if (palletDetectedThisFrame) {
-                uptimeSecs += (CONFIG.frameRateMs / 1000);
-                if (currentDowntimeSecs > 0) {
-                    totalDowntimeSecs += currentDowntimeSecs;
-                    if(currentDowntimeSecs >= CONFIG.downtimeThresholdSecs) {
-                        log("STATUS", "Machine returned to UPTIME.", "status-up");
-                    }
-                    currentDowntimeSecs = 0;
-                }
+        }
+        const woodRatio = woodPixelCount / totalROIPixels;
+        // Heuristic: if more than 0.4% of ROI is wood color and area, consider pallet present
+        // we also ensure it's not too small. In our simulation it's accurate.
+        return woodRatio > 0.008;   // tuned for drawn pallet
+    }
+    
+    // DRAW CONVEYOR BELT with sliding pallet (generative simulation)
+    function drawConveyorFrame() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        // belt background
+        ctx.fillStyle = "#557c55";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        // belt lines
+        ctx.strokeStyle = "#b0b856";
+        ctx.lineWidth = 2;
+        for (let y = 0; y < canvas.height; y += 35) {
+            ctx.beginPath();
+            ctx.moveTo(0, y);
+            ctx.lineTo(canvas.width, y);
+            ctx.stroke();
+        }
+        // generate pallet presence based on random interval simulation (industrial)
+        // dynamic pallet scheduling:
+        if (!simulationActive) return;
+        
+        if (palletVisibleCounter <= 0 && nextPalletFrameCounter <= 0) {
+            // schedule next pallet appearance (interval 1.5s to 7 sec)
+            const delayFrames = Math.floor(Math.random() * (FPS * 5) + FPS * 1.2);
+            nextPalletFrameCounter = delayFrames;
+        }
+        
+        if (nextPalletFrameCounter > 0) {
+            nextPalletFrameCounter--;
+            if (nextPalletFrameCounter === 0) {
+                // new pallet arrives
+                palletVisibleCounter = Math.floor(Math.random() * (FPS * 1.8) + FPS * 0.8); // visible between 0.8~2.8 sec
+                currentPalletWidth = Math.floor(Math.random() * 45 + 85);   // 85-130px
+                palletAnimProgress = 0;
+                simulatedPalletPresent = true;
             } else {
-                currentDowntimeSecs += (CONFIG.frameRateMs / 1000);
-                if (currentDowntimeSecs >= CONFIG.downtimeThresholdSecs && currentDowntimeSecs - (CONFIG.frameRateMs/1000) < CONFIG.downtimeThresholdSecs) {
-                    log("STATUS", `No pallets for ${CONFIG.downtimeThresholdSecs}s. DOWNTIME triggered.`, "status-down");
-                }
+                simulatedPalletPresent = false;
             }
-
-            // 4. Render Graphics
-            drawCameraFeed(palletDetectedThisFrame);
-
-            // 5. Update UI Metrics
-            updateMetrics(elapsedSec, palletDetectedThisFrame);
-
-            // 6. Update Chart (every 2 seconds)
-            if (Math.floor(elapsedSec) % 2 === 0 && Math.floor(elapsedSec) !== lastChartUpdateSec) {
-                lastChartUpdateSec = Math.floor(elapsedSec);
-                let currentStatus = (currentDowntimeSecs >= CONFIG.downtimeThresholdSecs) ? 0 : 1;
-                chartLabels.push(formatTime(elapsedSec));
-                chartPalletData.push(totalPalletsCounted);
-                chartStatusData.push(currentStatus);
-                prodChart.update('none'); // 'none' for performance, prevents lag
+        } else if (palletVisibleCounter > 0) {
+            simulatedPalletPresent = true;
+            palletVisibleCounter--;
+            // sliding movement: from left to right (X from 0.1 -> 0.85 of canvas)
+            const maxProgress = (currentPalletWidth + 50);
+            palletAnimProgress = Math.min(1.0, (1 - (palletVisibleCounter / (palletVisibleCounter+1))));
+            const startX = -currentPalletWidth * 0.5;
+            const endX = canvas.width - currentPalletWidth + 30;
+            currentPalletX = startX + (endX - startX) * palletAnimProgress;
+            if (palletVisibleCounter === 0) {
+                simulatedPalletPresent = false;
             }
-
-            animationId = requestAnimationFrame(updateLoop);
+        } else {
+            simulatedPalletPresent = false;
         }
-
-        function spawnPallet(time) {
-            pallets.push({
-                x: -150,
-                speed: 3 + Math.random() * 2, // Slight speed variation
-                counted: false
-            });
-        }
-
-        function drawCameraFeed(isDetecting) {
-            // Clear
-            ctx.fillStyle = '#1a1a1a';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            // Draw Conveyor Belt (moving lines)
-            ctx.strokeStyle = '#2a2a2a';
-            ctx.lineWidth = 2;
-            const offset = (Date.now() / 10) % 40;
-            for(let i = -40 + offset; i < canvas.height; i += 40) {
-                ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(canvas.width, i); ctx.stroke();
+        
+        // Draw wooden pallet if visible
+        if (simulatedPalletPresent && currentPalletX < canvas.width + 50) {
+            const palletX = currentPalletX;
+            const palletY = canvas.height/2 - 38;
+            const w = currentPalletWidth;
+            const h = 70;
+            // wood base
+            ctx.fillStyle = "#b97f44";
+            ctx.shadowBlur = 0;
+            ctx.fillRect(palletX, palletY, w, h);
+            ctx.fillStyle = "#9b5e2c";
+            for (let i=0; i<3; i++) {
+                ctx.fillRect(palletX+5, palletY+8+i*22, w-10, 6);
             }
-
-            // Draw Detection Zone Line
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
-            ctx.setLineDash([10, 10]);
-            ctx.beginPath(); ctx.moveTo(CONFIG.detectionZoneX, 0); ctx.lineTo(CONFIG.detectionZoneX, canvas.height); ctx.stroke();
-            ctx.setLineDash([]);
-            ctx.fillStyle = 'rgba(255,255,255,0.3)';
-            ctx.font = '10px monospace';
-            ctx.fillText("SCAN ZONE", CONFIG.detectionZoneX - 30, 20);
-
-            // Draw Pallets
-            pallets.forEach(p => {
-                // Shadow
-                ctx.fillStyle = 'rgba(0,0,0,0.5)';
-                ctx.fillRect(p.x + 5, 85, 140, 180);
-                
-                // Main pallet body
-                ctx.fillStyle = '#8B5A2B';
-                ctx.fillRect(p.x, 80, 140, 180);
-                
-                // Wooden planks
-                ctx.fillStyle = '#A0522D';
-                for(let i=0; i<3; i++) {
-                    ctx.fillRect(p.x + (i * 45) + 10, 80, 15, 180);
-                }
-                
-                // Border
-                ctx.strokeStyle = '#5C3317';
-                ctx.lineWidth = 2;
-                ctx.strokeRect(p.x, 80, 140, 180);
-
-                // Draw Bounding Box if near detection zone
-                if (p.x > CONFIG.detectionZoneX - 50 && p.x < CONFIG.detectionZoneX + 100) {
-                    ctx.strokeStyle = '#00ff00';
-                    ctx.lineWidth = 2;
-                    ctx.strokeRect(p.x - 5, 75, 150, 190);
-                    ctx.fillStyle = '#00ff00';
-                    ctx.font = 'bold 14px monospace';
-                    ctx.fillText("PALLET DETECTED", p.x - 5, 70);
-                }
-            });
-
-            // Camera UI Overlay (Top Left)
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
-            ctx.fillRect(10, 10, 180, 30);
-            ctx.fillStyle = isDetecting ? '#4ade80' : '#f87171';
-            ctx.beginPath(); ctx.arc(25, 25, 5, 0, Math.PI * 2); ctx.fill();
-            ctx.fillStyle = '#ffffff';
-            ctx.font = 'bold 14px monospace';
-            ctx.fillText(isDetecting ? "OBJECT IN FRAME" : "SEARCHING...", 38, 30);
+            ctx.fillStyle = "#5d3a1a";
+            ctx.fillRect(palletX+12, palletY+28, 12, 18);
+            ctx.fillRect(palletX+w-24, palletY+28, 12, 18);
+            ctx.fillStyle = "#e0a46b";
+            ctx.fillRect(palletX+2, palletY-3, w-4, 6);
         }
-
-        function updateMetrics(elapsedSec, isDetecting) {
-            const currentStatus = (currentDowntimeSecs >= CONFIG.downtimeThresholdSecs) ? "DOWN" : "UP";
-            const totalSec = Math.max(elapsedSec, 1);
+        
+        // add noise (industrial)
+        ctx.fillStyle = "#a58e6e66";
+        for (let i=0;i<120;i++) { ctx.fillRect(Math.random()*canvas.width, Math.random()*canvas.height, 1,1);}
+    }
+    
+    // Main inspection loop - performs detection & OEE update
+    let lastDetectionTime = 0;
+    function inspectionLoop(nowMs) {
+        if (!simulationActive) return;
+        
+        // update frame drawing
+        drawConveyorFrame();
+        
+        // perform vision detection (mock CV)
+        const palletDetectedByVision = mockVisionDetectPalletFromCanvas();
+        
+        // update uptime/downtime & stats
+        updateStatusBasedOnDetection(palletDetectedByVision, nowMs);
+        
+        // Increment pallet count (Edge detection: only count when transitions from false to true to avoid multiple counts)
+        if (palletDetectedByVision && !window._prevDetection) {
+            totalPalletsDetected++;
+            palletEventsTimestamps.push(nowMs);
+            rollingCountLastMinute++;
+            addLogEntry(`📦 PALLET DETECTED! total = ${totalPalletsDetected}`, "event");
             
-            // Calculations
-            const avail = uptimeSec / totalSec;
-            const actualPPH = (totalPalletsCounted / (uptimeSec / 3600)) || 0;
-            const perf = Math.min((actualPPH / CONFIG.idealPalletsPerHour), 1.0); // Cap at 1.0
-            const oee = avail * perf * CONFIG.qualityRate;
-            const ppm = uptimeSec > 0 ? (totalPalletsCounted / (uptimeSec / 60)) : 0;
-
-            // Update DOM
-            document.getElementById('timestampDisplay').innerText = formatTime(elapsedSec);
-            document.getElementById('oeeValue').innerHTML = `${(oee * 100).toFixed(1)}<span class="text-3xl">%</span>`;
-            
-            // Color OEE based on industry standards (Green > 85, Yellow > 60, Red < 60)
-            const oeeEl = document.getElementById('oeeValue');
-            oeeEl.className = `text-6xl font-extrabold ${oee > 0.85 ? 'text-green-400' : oee > 0.60 ? 'text-yellow-400' : 'text-red-400'}`;
-
-            document.getElementById('valAvailability').innerText = `${(avail * 100).toFixed(1)}%`;
-            document.getElementById('valPerformance').innerText = `${(perf * 100).toFixed(1)}%`;
-            document.getElementById('valPallets').innerText = totalPalletsCounted;
-            
-            document.getElementById('valTimeTotal').innerText = formatTime(totalSec);
-            document.getElementById('valTimeUp').innerText = formatTime(uptimeSec);
-            document.getElementById('valTimeDown').innerText = formatTime(totalDowntimeSecs + (currentDowntimeSecs >= CONFIG.downtimeThresholdSecs ? currentDowntimeSecs : 0));
-            document.getElementById('valPPM').innerText = ppm.toFixed(1);
+            // additional console style
         }
-
-        function finalizeReport() {
-            liveIndicator.classList.remove('bg-red-500', 'animate-pulse');
-            liveIndicator.classList.add('bg-slate-500');
-            document.getElementById('btnStart').disabled = false;
-            document.getElementById('btnStop').disabled = true;
-            
-            const totalSec = (CONFIG.simulationDurationMs / 1000);
-            const finalDowntime = totalDowntimeSecs + (currentDowntimeSecs >= CONFIG.downtimeThresholdSecs ? currentDowntimeSecs : 0);
-            const finalUptime = totalSec - finalDowntime;
-            
-            const avail = finalUptime / totalSec;
-            const actualPPH = (totalPalletsCounted / (finalUptime / 3600)) || 0;
-            const perf = Math.min((actualPPH / CONFIG.idealPalletsPerHour), 1.0);
-            const oee = avail * perf * CONFIG.qualityRate;
-
-            log("=======================================", "", "text-slate-600");
-            log("FINAL SHIFT REPORT", "", "text-white text-base font-bold");
-            log("=======================================", "", "text-slate-600");
-            log("REPORT", `Total Pallets: ${totalPalletsCounted}`, "text-blue-300");
-            log("REPORT", `Total Uptime:  ${formatTime(finalUptime)}`, "text-green-300");
-            log("REPORT", `Total Downtime:${formatTime(finalDowntime)} (Threshold: ${CONFIG.downtimeThresholdSecs}s)`, "text-red-300");
-            log("REPORT", `Availability:  ${(avail*100).toFixed(1)}%`, "text-slate-300");
-            log("REPORT", `Performance:   ${(perf*100).toFixed(1)}% (Ideal: ${CONFIG.idealPalletsPerHour} pph)`, "text-slate-300");
-            log("REPORT", `Quality:       ${(CONFIG.qualityRate*100).toFixed(1)}%`, "text-slate-300");
-            log("REPORT", `*** FINAL OEE: ${(oee*100).toFixed(2)}% ***`, "text-yellow-400 font-bold");
-            log("SYSTEM", "Inspection stopped. Ready for next shift.", "text-slate-500");
+        window._prevDetection = palletDetectedByVision;
+        
+        // update rolling pallets per minute
+        const nowRel = nowMs;
+        if (lastMinuteRollingMark === 0) lastMinuteRollingMark = nowMs;
+        if ((nowMs - lastMinuteRollingMark) >= 60000) {
+            const rateThisMin = rollingCountLastMinute;
+            productionRatesPerMinute.push({time: lastMinuteRollingMark, rate: rateThisMin});
+            rollingCountLastMinute = 0;
+            lastMinuteRollingMark = nowMs;
         }
-
-        // --- UTILITIES ---
-        function formatTime(totalSeconds) {
-            const m = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
-            const s = Math.floor(totalSeconds % 60).toString().padStart(2, '0');
-            return `${m}:${s}`;
+        
+        // Update UI elements every 4 frames for smoothness
+        if (frameCount % 3 === 0) updateUI(nowMs);
+        
+        // status badge
+        const badge = document.getElementById('liveStatusBadge');
+        if (currentStatus === 'uptime') {
+            badge.innerHTML = '🟢 UPTIME • PRODUCING';
+            badge.style.background = '#2c6e2c';
+        } else {
+            badge.innerHTML = '🔴 DOWNTIME • IDLE';
+            badge.style.background = '#a13e2d';
         }
-
-        function log(tag, message, colorClass) {
-            const el = document.createElement('div');
-            const time = formatTime((Date.now() - startTime) / 1000);
-            el.innerHTML = `<span class="text-slate-600">[${time}]</span> <span class="font-bold ${colorClass}">[${tag}]</span> ${message}`;
-            logContainer.appendChild(el);
-            logContainer.scrollTop = logContainer.scrollHeight;
+        
+        frameCount++;
+        lastDetectionTime = nowMs;
+    }
+    
+    function updateUI(nowMs) {
+        const totalSeconds = (nowMs - startTime) / 1000;
+        const uptimeMin = uptimeMs / 60000;
+        const downtimeMin = downtimeMs / 60000;
+        const avgPPM = totalPalletsDetected / (totalSeconds / 60);
+        document.getElementById('totalPallets').innerText = totalPalletsDetected;
+        document.getElementById('uptimeMin').innerText = uptimeMin.toFixed(2);
+        document.getElementById('downtimeMin').innerText = downtimeMin.toFixed(2);
+        document.getElementById('ppm').innerText = avgPPM.toFixed(2);
+        
+        // OEE calculations live
+        const availability = totalSeconds > 0 ? uptimeMs / (uptimeMs + downtimeMs) : 0;
+        const actualRatePerHour = totalSeconds > 0 ? (totalPalletsDetected / totalSeconds) * 3600 : 0;
+        let performance = actualRatePerHour / IDEAL_PALLETS_PER_HOUR;
+        if (performance > 1.0) performance = 1.0;
+        const oee = availability * performance * QUALITY_FACTOR;
+        document.getElementById('availabilityVal').innerText = `${(availability*100).toFixed(1)}%`;
+        document.getElementById('performanceVal').innerHTML = `${(performance*100).toFixed(1)}%`;
+        document.getElementById('oeeVal').innerHTML = `${(oee*100).toFixed(1)}%`;
+        document.getElementById('qualityVal').innerHTML = `98%`;
+    }
+    
+    // add message to log panel
+    function addLogEntry(msg, type) {
+        const logDiv = document.getElementById('logPanel');
+        const entry = document.createElement('div');
+        entry.className = 'log-entry';
+        const timestamp = new Date().toLocaleTimeString();
+        let prefix = "";
+        if(type === 'uptime') prefix = "🟢";
+        else if(type === 'downtime') prefix = "🔴";
+        else if(type === 'event') prefix = "📦";
+        else prefix = "ℹ️";
+        entry.innerHTML = `<span style="color:#aaa;">[${timestamp}]</span> ${prefix} ${msg}`;
+        logDiv.appendChild(entry);
+        entry.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        if (logDiv.children.length > 70) logDiv.removeChild(logDiv.children[0]);
+    }
+    
+    // Draw timeline chart (custom canvas based on statusLog and pallet events)
+    function drawTimelineChart() {
+        if (statusLog.length < 2) return;
+        const w = timelineCanvas.width, h = timelineCanvas.height;
+        timelineCtx.clearRect(0, 0, w, h);
+        timelineCtx.fillStyle = "#021016";
+        timelineCtx.fillRect(0, 0, w, h);
+        if (statusLog.length === 0) return;
+        const startTimeRef = startTime;
+        const minT = startTimeRef;
+        const maxT = performance.now();
+        const durationMs = maxT - minT;
+        if (durationMs <= 0) return;
+        
+        // Draw uptime/downtime as filled area
+        for (let i = 0; i < statusLog.length - 1; i++) {
+            const log1 = statusLog[i];
+            const log2 = statusLog[i+1];
+            const x1 = ((log1.timeMs - minT) / durationMs) * w;
+            const x2 = ((log2.timeMs - minT) / durationMs) * w;
+            const yStatus = (log1.status === 'uptime') ? 40 : h - 40;
+            const nextY = (log2.status === 'uptime') ? 40 : h - 40;
+            timelineCtx.beginPath();
+            timelineCtx.moveTo(x1, yStatus);
+            timelineCtx.lineTo(x2, nextY);
+            timelineCtx.lineTo(x2, h-40);
+            timelineCtx.lineTo(x1, h-40);
+            timelineCtx.fillStyle = log1.status === 'uptime' ? '#2e8b57aa' : '#b13e3eaa';
+            timelineCtx.fill();
         }
-    </script>
+        // pallet event markers
+        for (let t of palletEventsTimestamps) {
+            const x = ((t - minT) / durationMs) * w;
+            timelineCtx.fillStyle = "#FFD966";
+            timelineCtx.beginPath();
+            timelineCtx.moveTo(x, 20);
+            timelineCtx.lineTo(x-5, 45);
+            timelineCtx.lineTo(x+5, 45);
+            timelineCtx.fill();
+            timelineCtx.fillStyle = "white";
+            timelineCtx.font = "bold 12px monospace";
+            timelineCtx.fillText("|", x-2, 32);
+        }
+        timelineCtx.strokeStyle = "#f39c12";
+        timelineCtx.lineWidth = 1.5;
+        timelineCtx.strokeRect(2, 2, w-4, h-4);
+        timelineCtx.fillStyle = "#bed4e6";
+        timelineCtx.font = "10px monospace";
+        timelineCtx.fillText("↑ Pallet event", w-110, 28);
+        timelineCtx.fillStyle = "#90ee90";
+        timelineCtx.fillText("🟢 Uptime", 10, 25);
+        timelineCtx.fillStyle = "#ffaaaa";
+        timelineCtx.fillText("🔴 Downtime", 10, 45);
+    }
+    
+    // final report + show full OEE
+    function generateFinalReport() {
+        const now = performance.now();
+        const totalSec = (now - startTime) / 1000;
+        const totalUptimeMin = uptimeMs / 60000;
+        const totalDowntimeMin = downtimeMs / 60000;
+        const avgPPM = totalPalletsDetected / (totalSec / 60);
+        const availability = totalSec > 0 ? uptimeMs / (uptimeMs + downtimeMs) : 0;
+        const actualRatePerHour = totalSec > 0 ? (totalPalletsDetected / totalSec) * 3600 : 0;
+        let performance = actualRatePerHour / IDEAL_PALLETS_PER_HOUR;
+        if (performance > 1) performance = 1;
+        const oee = availability * performance * QUALITY_FACTOR;
+        alert(`===== FINAL OEE REPORT =====\n📦 Total pallets: ${totalPalletsDetected}\n⏱️ Uptime: ${totalUptimeMin.toFixed(2)} min\n⚠️ Downtime: ${totalDowntimeMin.toFixed(2)} min\n📈 Avg Pallets/min: ${avgPPM.toFixed(2)}\n⚙️ Availability: ${(availability*100).toFixed(1)}%\n🏎️ Performance: ${(performance*100).toFixed(1)}%\n✨ Quality: 98%\n🏆 OEE: ${(oee*100).toFixed(1)}%\n(ideal rate: ${IDEAL_PALLETS_PER_HOUR} pallets/hour)`);
+        drawTimelineChart();
+        addLogEntry("📊 Final report generated with OEE calculation", "info");
+    }
+    
+    // RESET everything
+    function resetSystem() {
+        simulationActive = false;
+        if (animationId) cancelAnimationFrame(animationId);
+        totalPalletsDetected = 0;
+        palletEventsTimestamps = [];
+        statusLog = [];
+        currentStatus = "downtime";
+        uptimeMs = 0;
+        downtimeMs = 0;
+        rollingCountLastMinute = 0;
+        productionRatesPerMinute = [];
+        frameCount = 0;
+        startTime = performance.now();
+        lastPalletTimeMs = startTime;
+        lastStatusSwitchTimeMs = startTime;
+        lastMinuteRollingMark = 0;
+        palletVisibleCounter = 0;
+        nextPalletFrameCounter = 0;
+        simulatedPalletPresent = false;
+        window._prevDetection = false;
+        document.getElementById('logPanel').innerHTML = '<div class="log-entry">🔄 System reset. New simulation started.</div>';
+        addLogEntry("✅ Reset complete. Starting fresh inspection...", "info");
+        simulationActive = true;
+        function animate(ts) {
+            inspectionLoop(ts);
+            animationId = requestAnimationFrame(animate);
+        }
+        animationId = requestAnimationFrame(animate);
+        updateUI(performance.now());
+    }
+    
+    // attach event listeners & start
+    document.getElementById('resetBtn').addEventListener('click', () => resetSystem());
+    document.getElementById('exportReportBtn').addEventListener('click', () => generateFinalReport());
+    
+    // initial start
+    startTime = performance.now();
+    lastPalletTimeMs = startTime;
+    lastStatusSwitchTimeMs = startTime;
+    currentStatus = "downtime";
+    window._prevDetection = false;
+    simulationActive = true;
+    function animateFrame(time) {
+        inspectionLoop(time);
+        animationId = requestAnimationFrame(animateFrame);
+    }
+    animationId = requestAnimationFrame(animateFrame);
+    // periodically redraw timeline
+    setInterval(() => { if(simulationActive) drawTimelineChart(); }, 1800);
+</script>
 </body>
 </html>
